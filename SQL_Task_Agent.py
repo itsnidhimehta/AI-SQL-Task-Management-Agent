@@ -31,9 +31,9 @@ db.run("""
 ## llm, tools, memory, system_prompt 
 
 model=ChatGroq(
-    model="openai/gpt-oss-20b",
+    model="openai/gpt-oss-120b",
     temperature=0,
-    max_tokens=1000
+    max_tokens=4000
 )
 toolkit=SQLDatabaseToolkit(db=db,llm=model)
 tools=toolkit.get_tools()
@@ -84,12 +84,16 @@ if prompt:
     st.chat_message("user").markdown(prompt)
     st.session_state.messages.append({"role":"user","content":prompt})
 
-    with st.chat_message("ai"):
-        with st.spinner("Processing..."):
-            response = agent.invoke(
-                {"messages":[{"role":"user","content":prompt}]},
-                {"configurable":{"thread_id":st.session_state.thread_id}}
+with st.chat_message("ai"):
+      with st.spinner("Processing..."):
+           try:
+                response = agent.invoke(
+                    {"messages":[{"role":"user","content":prompt}]},
+                    {"configurable":{"thread_id":st.session_state.thread_id}}
                 )
-            result=response["messages"][-1].content
+                result = response["messages"][-1].content
+            except Exception as e:
+                print(f"[ERROR] agent.invoke failed: {e!r}")
+                result = "Sorry, I couldn't process that. Please try rephrasing your request."
             st.markdown(result)
             st.session_state.messages.append({"role":"ai","content":result})
