@@ -13,6 +13,7 @@ from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.agents import create_agent
 import streamlit as st
+import uuid
 
 db=SQLDatabase.from_uri("sqlite:///my_tasks.db")
 db.run("""
@@ -68,9 +69,12 @@ def get_agent():
 agent=get_agent()
 
 st.subheader("TaskBot - Manage Your Tasks")
+st.caption("Try:'Create a task called Prepare for interview' . 'Show all tasks' . 'Mark task 1 as completed')
 
 if "messages" not in st.session_state:
     st.session_state.messages=[]
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = str(uuid.uuid4())
 
 for message in st.session_state.messages:
     st.chat_message(message["role"]).markdown(message["content"])
@@ -84,7 +88,7 @@ if prompt:
         with st.spinner("Processing..."):
             response = agent.invoke(
                 {"messages":[{"role":"user","content":prompt}]},
-                {"configurable":{"thread_id":"1"}}
+                {"configurable":{"thread_id":st.session_state.thread_id}}
                 )
             result=response["messages"][-1].content
             st.markdown(result)
