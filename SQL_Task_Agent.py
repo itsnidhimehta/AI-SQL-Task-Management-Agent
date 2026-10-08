@@ -31,7 +31,7 @@ db.run("""
 ## llm, tools, memory, system_prompt 
 
 model=ChatGroq(
-    model="openai/gpt-oss-120b",
+    model="llama-3.3-70b-versatile",
     temperature=0,
     max_tokens=4000
 )
