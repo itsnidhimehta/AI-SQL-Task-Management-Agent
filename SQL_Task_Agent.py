@@ -69,7 +69,7 @@ def get_agent():
 agent=get_agent()
 
 st.subheader("TaskBot - Manage Your Tasks")
-st.caption("Try:'Create a task called Prepare for interview' . 'Show all tasks' . 'Mark task 1 as completed')
+st.caption("Try: 'Create a task called Prepare for interview' · 'Show all tasks' · 'Mark task 1 as completed'")
 
 if "messages" not in st.session_state:
     st.session_state.messages=[]
