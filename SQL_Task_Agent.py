@@ -84,9 +84,9 @@ if prompt:
     st.chat_message("user").markdown(prompt)
     st.session_state.messages.append({"role":"user","content":prompt})
 
-with st.chat_message("ai"):
-      with st.spinner("Processing..."):
-           try:
+    with st.chat_message("ai"):
+        with st.spinner("Processing..."):
+            try:
                 response = agent.invoke(
                     {"messages":[{"role":"user","content":prompt}]},
                     {"configurable":{"thread_id":st.session_state.thread_id}}
