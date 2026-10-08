@@ -1,456 +1,123 @@
-# AI SQL Task Management Agent
+# 🗂️ AI SQL Task Management Agent
 
-An AI-powered Task Management application built with **Python, LangChain, LangGraph, Groq, SQLite, and Streamlit**.
+Manage a to-do list in plain English. The AI agent turns your request into SQL, runs it on a real database, and shows the result.
 
-The application allows users to manage tasks using natural language. Instead of manually writing SQL queries, the user can simply ask the AI agent to create, read, update, or delete tasks.
+🔗 **Live demo:** [[sql-task-agent.streamlit.app](https://sql-task-agent.streamlit.app)](https://sql-task-agent.streamlit.app/)
 
-For example:
+![App screenshot](assets/screenshot.png)
 
-* "Show me all my tasks"
-* "Create a task called Learn LangChain"
-* "Mark Learn LangChain as completed"
-* "Delete the task with id 2"
+<img width="1090" height="535" alt="screenshot" src="https://github.com/user-attachments/assets/6015bf43-904d-4a45-8e90-1fd770261bee" />
 
-The AI agent understands the user's request, generates the appropriate SQL operation, executes it against the SQLite database, and returns the result through a Streamlit interface.
 
----
+## ✨ What it does
 
-## Project Overview
+Type a request like you would to a person, and the agent handles the database for you:
 
-This project demonstrates how an **LLM-powered SQL agent** can interact with a relational database using natural-language instructions.
+| You type | What the agent does |
+|---|---|
+| `Create a task called Learn SQL` | Writes and runs an `INSERT` query |
+| `Show all tasks` | Runs a `SELECT` and returns a table |
+| `Mark task 3 as completed` | Runs an `UPDATE`, then confirms with a `SELECT` |
+| `Delete task 2` | Runs a `DELETE`, then confirms with a `SELECT` |
 
-### Architecture
+## 🛠️ Tech stack
 
-```text
-                 User
-                  |
-                  v
-          Streamlit Chat UI
-                  |
-                  v
-          LangChain Agent
-                  |
-                  v
-              Groq LLM
-                  |
-                  v
-       SQL Database Toolkit
-                  |
-                  v
-             SQLite DB
-                  |
-                  v
-            tasks table
+Python · LangChain · LangGraph · Groq (`llama-3.3-70b-versatile`) · SQLite · Streamlit
+
+## 🧠 How it works
+
+```mermaid
+flowchart LR
+    A[User request] --> B[Streamlit chat UI]
+    B --> C[LangChain agent]
+    C --> D[Groq LLM<br/>Llama 3.3 70B]
+    D -- picks a tool --> E[SQL Database Toolkit]
+    E --> F[(SQLite<br/>tasks table)]
+    F -- result --> C
+    C --> B
 ```
 
-The agent uses the LLM to understand the user's request and select the appropriate SQL database tools.
+The agent is built from four parts:
 
----
+| Part | Role |
+|---|---|
+| **LLM** (Groq, Llama 3.3 70B) | Understands the request and decides which SQL to run |
+| **Tools** (`SQLDatabaseToolkit`) | Let the agent inspect the schema and run queries |
+| **Memory** (`InMemorySaver`) | Remembers the conversation, with one thread per visitor |
+| **System prompt** | Sets the rules: max 10 rows, newest first, confirm every change |
 
-## Key Features
-
-* Natural-language task management
-* Create tasks
-* Read/list tasks
-* Update task status
-* Delete tasks
-* SQLite database integration
-* LLM-powered SQL generation
-* LangChain SQL Database Toolkit
-* LangGraph agent architecture
-* Streamlit chat interface
-* Conversation memory using `InMemorySaver`
-* Automatic database/table creation
-* Structured task output
-* SQL operation confirmation after modifications
-
----
-
-## Technologies Used
-
-| Technology         | Purpose                              |
-| ------------------ | ------------------------------------ |
-| Python             | Application development              |
-| Streamlit          | Web-based user interface             |
-| LangChain          | LLM and SQL agent integration        |
-| LangGraph          | Agent execution and state management |
-| Groq               | Large Language Model inference       |
-| SQLite             | Relational database                  |
-| SQLDatabase        | Database connection and interaction  |
-| SQLDatabaseToolkit | SQL tools for the AI agent           |
-| python-dotenv      | Environment variable management      |
-
----
-
-## Project Structure
-
-```text
-AI-SQL-Task-Management-Agent/
-│
-├── 4_sql_agent.py
-│
-├── data/
-│   └── sql_prompt.txt
-│
-├── README.md
-├── requirements.txt
-└── .gitignore
-```
-
-The SQLite database `my_tasks.db` is generated automatically when the application runs and is intentionally excluded from GitHub.
-
----
-
-## Database Schema
-
-The application creates a `tasks` table automatically.
+## 🗄️ Database schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS tasks(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     description TEXT,
-    status TEXT CHECK (
-        status IN ('pending', 'in_progress', 'completed')
-    ) DEFAULT 'pending',
+    status TEXT CHECK (status IN ('pending','in_progress','completed')) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-### Columns
+The `CHECK` constraint means the database itself rejects any invalid status, even if the LLM makes a mistake.
 
-| Column      | Type      | Description                        |
-| ----------- | --------- | ---------------------------------- |
-| id          | INTEGER   | Unique task identifier             |
-| title       | TEXT      | Task title                         |
-| description | TEXT      | Optional task description          |
-| status      | TEXT      | pending, in_progress, or completed |
-| created_at  | TIMESTAMP | Task creation timestamp            |
+## 🔧 Problems I solved while deploying
 
----
+| Problem | Cause | Fix |
+|---|---|---|
+| Visitors could see each other's chats | Every user shared one memory thread (`thread_id = "1"`) | Gave each visitor their own `uuid` thread in `st.session_state` |
+| Creating tasks failed with `output_parse_failed` | The reasoning model broke its output on longer tool calls such as `INSERT` | Tested a larger model and a higher token limit, then switched to Llama 3.3 70B, which calls tools reliably |
+| A failed request crashed the whole page | No error handling around the agent call | Wrapped the call in `try/except`: users see a friendly message, and the real error goes to the server logs |
 
-## How the Agent Works
-
-The project uses four main components to create the agent:
+## 📁 Project structure
 
 ```text
-LLM
-Tools
-Memory
-System Prompt
+AI-SQL-Task-Management-Agent/
+├── SQL_Task_Agent.py    # Streamlit app + agent
+├── data/
+│   └── sql_prompt.txt
+├── assets/
+│   └── screenshot.png
+├── requirements.txt
+├── .gitignore           # keeps .env and my_tasks.db out of GitHub
+└── README.md
 ```
 
-### 1. LLM
-
-The application uses Groq's `openai/gpt-oss-20b` model.
-
-```python
-model = ChatGroq(
-    model="openai/gpt-oss-20b",
-    temperature=0,
-    max_tokens=1000
-)
-```
-
-The LLM is responsible for understanding the user's natural-language request and deciding which database operation is required.
-
----
-
-### 2. Database
-
-SQLite is used as the database.
-
-```python
-db = SQLDatabase.from_uri("sqlite:///my_tasks.db")
-```
-
-The database stores the task information in the `tasks` table.
-
----
-
-### 3. SQL Database Toolkit
-
-LangChain's SQL Database Toolkit provides tools that allow the agent to inspect and interact with the database.
-
-```python
-toolkit = SQLDatabaseToolkit(
-    db=db,
-    llm=model
-)
-
-tools = toolkit.get_tools()
-```
-
-The available tools allow the agent to work with the database rather than requiring the user to manually write SQL.
-
----
-
-### 4. Agent
-
-The LangChain agent combines the model, tools, memory, and system instructions.
-
-```python
-agent = create_agent(
-    model=model,
-    tools=tools,
-    checkpointer=InMemorySaver(),
-    system_prompt=system_prompt
-)
-```
-
----
-
-## Agent Rules
-
-The system prompt provides rules for safe and consistent database operations.
-
-### SELECT operations
-
-The agent is instructed to:
-
-* Return a maximum of 10 records
-* Sort results by `created_at DESC`
-
-### CREATE / UPDATE / DELETE
-
-After modifying the database, the agent performs a confirmation `SELECT` query to verify the result.
-
-### Task status
-
-Only these statuses are allowed:
-
-```text
-pending
-in_progress
-completed
-```
-
----
-
-## CRUD Operations
-
-The agent supports the following operations.
-
-### CREATE
-
-Example:
-
-```text
-Create a task called Learn LangChain
-```
-
-Conceptually:
-
-```sql
-INSERT INTO tasks(title, description, status)
-VALUES (...);
-```
-
----
-
-### READ
-
-Example:
-
-```text
-Show me all tasks
-```
-
-Conceptually:
-
-```sql
-SELECT *
-FROM tasks
-ORDER BY created_at DESC
-LIMIT 10;
-```
-
----
-
-### UPDATE
-
-Example:
-
-```text
-Mark Learn LangChain as completed
-```
-
-Conceptually:
-
-```sql
-UPDATE tasks
-SET status = 'completed'
-WHERE title = 'Learn LangChain';
-```
-
-The agent then confirms the update with a `SELECT` query.
-
----
-
-### DELETE
-
-Example:
-
-```text
-Delete the Learn LangChain task
-```
-
-Conceptually:
-
-```sql
-DELETE FROM tasks
-WHERE title = 'Learn LangChain';
-```
-
----
-
-## Streamlit Interface
-
-The application provides a conversational interface using Streamlit.
-
-Users can type natural-language commands into the chat input.
-
-Example:
-
-```text
-User:
-Mark Learn LangChain as completed
-```
-
-The agent processes the request and returns a structured response containing the updated task.
-
----
-
-## Setup Instructions
-
-### 1. Clone the repository
+## 🚀 Run locally
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/AI-SQL-Task-Management-Agent.git
-```
-
-### 2. Navigate to the project
-
-```bash
+git clone https://github.com/itsnidhimehta/AI-SQL-Task-Management-Agent.git
 cd AI-SQL-Task-Management-Agent
-```
 
-### 3. Create a virtual environment
-
-Windows:
-
-```bash
 python -m venv env
+env\Scripts\activate            # Mac/Linux: source env/bin/activate
+pip install -r requirements.txt
 ```
 
-Activate it:
-
-```bash
-env\Scripts\activate
-```
-
-### 4. Install dependencies
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-### 5. Configure the Groq API key
-
-Create a `.env` file:
+Create a `.env` file with your free Groq key from [console.groq.com](https://console.groq.com):
 
 ```text
 GROQ_API_KEY=your_groq_api_key
 ```
 
-Do not commit the `.env` file to GitHub.
-
-### 6. Run the application
+Then run:
 
 ```bash
-python -m streamlit run 4_sql_agent.py
+streamlit run SQL_Task_Agent.py
 ```
 
-Streamlit will open the application in your browser.
+The SQLite database `my_tasks.db` is created automatically on first run.
 
----
+## ⚠️ Known limitations
 
-## Example Queries
+- The live demo uses one shared SQLite database, so all visitors see the same tasks, and the data resets when the app restarts.
+- The agent can run any SQL the LLM writes, including a `DELETE` without a filter.
 
-Try asking:
+## 🔮 Next improvements
 
-```text
-Show me all tasks
-```
+- PostgreSQL with a `user_id` on every task, so each user only sees their own tasks
+- Replace the general SQL tools with specific tools (`add_task`, `update_status`, …) so the agent cannot run unsafe queries
+- Unit tests with a fake LLM, and a GitHub Actions workflow to run them on every push
 
-```text
-Create a task called Learn LangChain
-```
+## 👩‍💻 Author
 
-```text
-Create a task called Prepare for interview with description "Practice SQL agent questions"
-```
-
-```text
-Mark Learn LangChain as completed
-```
-
-```text
-Show completed tasks
-```
-
-```text
-Delete the task with id 2
-```
-
----
-
-## What This Project Demonstrates
-
-This project demonstrates practical knowledge of:
-
-* LLM application development
-* AI agents
-* Tool calling
-* SQL agents
-* Natural-language database interaction
-* LangChain
-* LangGraph
-* Groq
-* SQLite
-* Streamlit
-* Prompt engineering
-* State/checkpoint management
-* CRUD operations
-* Database schema design
-
----
-
-## Future Improvements
-
-Possible improvements include:
-
-* PostgreSQL integration
-* User authentication
-* Multiple users and task ownership
-* Task priorities
-* Due dates
-* Task search
-* Task filtering
-* Agent response streaming
-* SQL query logging
-* Production database deployment
-* Cloud deployment
-* Authentication and authorization
-* Improved error handling
-* Observability and agent tracing
-
----
-
-## Author
-
-**Nidhi Mehta**
-
-Data Engineering / AI-ML / Generative AI
-
-This project was created as part of my hands-on learning and portfolio development in **Generative AI, LLM Agents, LangChain, LangGraph, and AI-powered data applications**.
+**Nidhi Mehta** · [GitHub](https://github.com/itsnidhimehta) · [LinkedIn](https://linkedin.com/in/nidhi-mehta14)
