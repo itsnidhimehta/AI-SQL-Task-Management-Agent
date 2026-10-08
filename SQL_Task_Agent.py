@@ -91,7 +91,7 @@ if prompt:
                     {"messages":[{"role":"user","content":prompt}]},
                     {"configurable":{"thread_id":st.session_state.thread_id}}
                 )
-                result = response["messages"][-1].content
+                result = response["messages"][-1].content or "Done! Type 'Show all tasks' to see the update."
             except Exception as e:
                 print(f"[ERROR] agent.invoke failed: {e!r}")
                 result = "Sorry, I couldn't process that. Please try rephrasing your request."
